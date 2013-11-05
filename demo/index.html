@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title> TEST UNDO/REDO </title>
+	<meta charset="utf-8">
+	<script src="undo.js"></script>
+	<script src="../vendor/jquery-1.5.1.js"></script>
+	<style>
+		body { font:90% Verdana, Arial, sans-serif;}
+		#text { border: 1px dotted blue}
+	</style>
+
+	<script>
+	$(function() {
+
+		var stack = new Undo.Stack(),
+			EditCommand = Undo.Command.extend({
+				constructor: function(textArea, oldValue, newValue) {
+					this.textArea = textArea;
+					this.oldValue = oldValue;
+					this.newValue = newValue;
+				},
+				execute: function() {
+				},
+				undo: function() {
+					this.textArea.html(this.oldValue);
+				},
+				redo: function() {
+					this.textArea.html(this.newValue);
+				}
+			});
+
+		stack.changed = function() {
+			stackUI();
+		};
+
+		var undo = $(".undo"),
+			redo = $(".redo"),
+			dirty = $(".dirty");
+
+		function stackUI() {
+			undo.attr("disabled", !stack.canUndo());
+			redo.attr("disabled", !stack.canRedo());
+			dirty.toggle(stack.dirty());
+		}
+		stackUI();
+
+		$(document.body).delegate(".undo, .redo", "click", function () {
+			var what = $(this).attr("class");
+			stack[what]();
+			return false;
+		});
+
+		var text = $("#text"), 
+			startValue = text.html(),
+			timer;
+
+		$("#text").bind("keyup", function () {
+			clearTimeout(timer);
+			timer = setTimeout(function() {
+				var newValue = text.html();
+
+				if(newValue != startValue)	{
+					stack.execute(new EditCommand(text, startValue, newValue));
+					startValue = newValue;
+				}
+			}, 250);
+		});
+
+		$(document).keydown(function(event) {
+			if(!event.metaKey || event.keyCode != 90) 
+				return;
+			event.preventDefault();
+			if(event.shiftKey) {
+				stack.canRedo() && stack.redo();
+			}
+			else {
+				stack.canUndo() && stack.undo();
+			}
+		});
+	});
+	</script>
+</head>
+<body>
+	<button class="undo" href="">Undo</button>
+	<button class="redo" href="">Redo</button>
+	<div id="text" contenteditable="true">Edite o texto e teste o undo e redo!</div>
+</body>
+</html>
